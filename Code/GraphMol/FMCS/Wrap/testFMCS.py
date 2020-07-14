@@ -33,7 +33,7 @@ class BondMatchOrderMatrix:
         return self.MatchMatrix[i][j]
 
 class CompareAny(rdFMCS.MCSAtomCompare):
-    def compare(self, p, mol1, atom1, mol2, atom2):
+    def __call__(self, p, mol1, atom1, mol2, atom2):
         if (p.MatchChiralTag and not self.CheckAtomChirality(p, mol1, atom1, mol2, atom2)):
             return False
         if (p.MatchFormalCharge and not self.CheckAtomCharge(p, mol1, atom1, mol2, atom2)):
@@ -43,7 +43,7 @@ class CompareAny(rdFMCS.MCSAtomCompare):
         return True
 
 class CompareAnyHeavyAtom(CompareAny):
-    def compare(self, p, mol1, atom1, mol2, atom2):
+    def __call__(self, p, mol1, atom1, mol2, atom2):
         a1 = mol1.GetAtomWithIdx(atom1)
         a2 = mol2.GetAtomWithIdx(atom2)
         # Any atom, including H, matches another atom of the same type,  according to
@@ -54,7 +54,7 @@ class CompareAnyHeavyAtom(CompareAny):
         return False
 
 class CompareElements(rdFMCS.MCSAtomCompare):
-    def compare(self, p, mol1, atom1, mol2, atom2):
+    def __call__(self, p, mol1, atom1, mol2, atom2):
         a1 = mol1.GetAtomWithIdx(atom1)
         a2 = mol2.GetAtomWithIdx(atom2)
         if (a1.GetAtomicNum() != a2.GetAtomicNum()):
@@ -70,7 +70,7 @@ class CompareElements(rdFMCS.MCSAtomCompare):
         return True
 
 class CompareIsotopes(rdFMCS.MCSAtomCompare):
-    def compare(self, p, mol1, atom1, mol2, atom2):
+    def __call__(self, p, mol1, atom1, mol2, atom2):
         a1 = mol1.GetAtomWithIdx(atom1)
         a2 = mol2.GetAtomWithIdx(atom2)
         if (a1.GetIsotope() != a2.GetIsotope()):
@@ -85,7 +85,7 @@ class CompareIsotopes(rdFMCS.MCSAtomCompare):
 
 class CompareOrder(rdFMCS.MCSBondCompare):
     match = BondMatchOrderMatrix(True)  # ignore Aromatization
-    def compare(self, p, mol1, bond1, mol2, bond2):
+    def __call__(self, p, mol1, bond1, mol2, bond2):
         b1 = mol1.GetBondWithIdx(bond1)
         b2 = mol2.GetBondWithIdx(bond2)
         t1 = b1.GetBondType()
@@ -110,7 +110,7 @@ class AtomCompareUserData(rdFMCS.MCSAtomCompare):
         self._matchAnyHet = False
     def setMatchAnyHet(self, v):
         self._matchAnyHet = v
-    def compare(self, p, mol1, atom1, mol2, atom2):
+    def __call__(self, p, mol1, atom1, mol2, atom2):
         a1 = mol1.GetAtomWithIdx(atom1)
         a2 = mol2.GetAtomWithIdx(atom2)
         if (a1.GetAtomicNum() != a2.GetAtomicNum() and
@@ -140,7 +140,7 @@ class BondCompareUserData(rdFMCS.MCSBondCompare):
         self.match = None
     def setIgnoreAromatization(self, v):
         self.match = BondMatchOrderMatrix(v)
-    def compare(self, p, mol1, bond1, mol2, bond2):
+    def __call__(self, p, mol1, bond1, mol2, bond2):
         b1 = mol1.GetBondWithIdx(bond1)
         b2 = mol2.GetBondWithIdx(bond2)
         t1 = b1.GetBondType()
