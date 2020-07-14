@@ -13,8 +13,10 @@
 #include <GraphMol/FMCS/FMCS.h>
 #include <GraphMol/FMCS/RingMatchTableSet.h>
 
-#define COMPARE_FUNC_NAME "compare"
-#define CALLBACK_FUNC_NAME "callback"
+#define COMPARE_FUNC_NAME "__call__"
+#define COMPARE_DEPRECATED_FUNC_NAME "compare"
+#define CALLBACK_FUNC_NAME "__call__"
+#define CALLBACK_DEPRECATED_FUNC_NAME "callback"
 
 namespace python = boost::python;
 
@@ -36,13 +38,27 @@ struct PyMCSAtomCompare {
                                  const ROMol& mol2, unsigned int atom2) const {
     return RDKit::checkAtomChirality(p, mol1, atom1, mol2, atom2);
   }
-  virtual bool compare(const MCSAtomCompareParameters&,
-                       const ROMol&, unsigned int, const ROMol&, unsigned int) {
+  virtual bool operator()(const MCSAtomCompareParameters&,
+                          const ROMol&, unsigned int, const ROMol&, unsigned int) {
     PyErr_SetString(PyExc_AttributeError,
       "The " COMPARE_FUNC_NAME "() method "
       "must be overridden in the rdFMCS.MCSAtomCompare subclass");
     python::throw_error_already_set();
     return false;
+  }
+  // DEPRECATED: remove in release 2021.01
+  virtual bool compare(const MCSAtomCompareParameters&,
+                       const ROMol&, unsigned int, const ROMol&, unsigned int) {
+    PyErr_SetString(PyExc_AttributeError,
+      "The " COMPARE_DEPRECATED_FUNC_NAME "() method (DEPRECATED) "
+      "must be overridden in the rdFMCS.MCSAtomCompare subclass");
+    python::throw_error_already_set();
+    return false;
+  }
+  // DEPRECATED: remove in release 2021.01
+  bool hasOverride(const char *attrName) {
+    auto obj = get_override(attrName);
+    return PyCallable_Check(obj.ptr());
   }
 };
 
@@ -67,14 +83,28 @@ struct PyMCSBondCompare {
     }
     return RDKit::checkBondRingMatch(p, mol1, bond1, mol2, bond2, &ringMatchTables);
   }
-  virtual bool compare(const MCSBondCompareParameters&,
-                       const ROMol&, unsigned int, const ROMol&, unsigned int) {
+  virtual bool operator()(const MCSBondCompareParameters&,
+                          const ROMol&, unsigned int, const ROMol&, unsigned int) {
     PyErr_SetString(PyExc_AttributeError,
       "The " COMPARE_FUNC_NAME "() method "
       "must be overridden in the rdFMCS.MCSBondCompare subclass");
     python::throw_error_already_set();
     return false;
-  };
+  }
+  // DEPRECATED: remove in releas 2020.01
+  virtual bool compare(const MCSBondCompareParameters&,
+                       const ROMol&, unsigned int, const ROMol&, unsigned int) {
+    PyErr_SetString(PyExc_AttributeError,
+      "The " COMPARE_DEPRECATED_FUNC_NAME "() method (DEPRECATED) "
+      "must be overridden in the rdFMCS.MCSBondCompare subclass");
+    python::throw_error_already_set();
+    return false;
+  }
+  // DEPRECATED: remove in release 2021.01
+  bool hasOverride(const char *attrName) {
+    auto obj = get_override(attrName);
+    return PyCallable_Check(obj.ptr());
+  }
   const MCSParameters *mcsParameters;
   std::set<const ROMol *> ringMatchTablesMols;
   FMCS::RingMatchTableSet ringMatchTables;
@@ -100,6 +130,14 @@ struct PyMCSProgress {
                         const MCSParameters&) {
     PyErr_SetString(PyExc_AttributeError,
       "The " CALLBACK_FUNC_NAME "() method "
+      "must be overridden in the rdFMCS.MCSProgress subclass");
+    python::throw_error_already_set();
+    return false;
+  }
+  virtual bool callbackDeprecated(const MCSProgressData&,
+                                  const MCSParameters&) {
+    PyErr_SetString(PyExc_AttributeError,
+      "The " CALLBACK_DEPRECATED_FUNC_NAME "() method "
       "must be overridden in the rdFMCS.MCSProgress subclass");
     python::throw_error_already_set();
     return false;
@@ -204,7 +242,7 @@ public:
     else {
       python::extract<PyMCSAtomCompare *> extractPyMCSAtomCompare(atomCompObject);
       if (extractPyMCSAtomCompare.check()) {
-        PyObject *callable = PyObject_GetAttrString(atomCompObject.ptr(), COMPARE_FUNC_NAME);
+        PyObject *callable = PyObject_GetAttrString(atomCompObject.ptr(), COMPARE_FUNC_NAME) ||
         if (!callable) {
           // should never get here
           PyErr_SetString(PyExc_AttributeError,
@@ -619,12 +657,17 @@ BOOST_PYTHON_MODULE(rdFMCS) {
 
   python::class_<RDKit::PyMCSProgress, boost::noncopyable>(
       "MCSProgress", "Base class. Subclass and override "
-      "MCSProgress." CALLBACK_FUNC_NAME "callback() "
+      "MCSProgress." CALLBACK_FUNC_NAME "() "
       "to define a custom callback function")
       .def(CALLBACK_FUNC_NAME, &RDKit::PyMCSProgress::callback,
            (python::arg("self"), python::arg("stat"),
               python::arg("parameters")),
-              "override to implement a custom progress callback");
+              "override to implement a custom progress callback")
+      .def(CALLBACK_DEPRECATED_FUNC_NAME, &RDKit::PyMCSProgress::callbackDeprecated,
+           (python::arg("self"), python::arg("stat"),
+              python::arg("parameters")),
+              "DEPRECATED: override " CALLBACK_FUNC_NAME " instead.\n"
+              "override to implement a custom progress callback.\n");
 
   python::class_<RDKit::PyMCSProgressData, boost::noncopyable>(
       "MCSProgressData", "Information about the MCS progress")
